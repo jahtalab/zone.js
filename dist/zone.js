@@ -376,7 +376,7 @@
 	                value = this._cancelTaskZS.onCancelTask(this._cancelTaskDlgt, this.zone, targetZone, task);
 	            }
 	            else if (!task.cancelFn) {
-	                throw new Error('Task does not support cancellation, or is already canceled.');
+	                return; // throw new Error('Task does not support cancellation, or is already canceled.');
 	            }
 	            else {
 	                value = task.cancelFn(task);
@@ -395,7 +395,7 @@
 	            var prev = counts[type];
 	            var next = counts[type] = prev + count;
 	            if (next < 0) {
-	                throw new Error('More tasks executed then were scheduled.');
+	                return; // throw new Error('More tasks executed then were scheduled.');
 	            }
 	            if (prev == 0 || next == 0) {
 	                var isEmpty = {
