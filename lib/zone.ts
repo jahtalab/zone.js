@@ -771,7 +771,7 @@ const Zone: ZoneType = (function(global: any) {
       if (this._cancelTaskZS) {
         value =  this._cancelTaskZS.onCancelTask(this._cancelTaskDlgt, this.zone, targetZone, task);
       } else  if (!task.cancelFn) {
-        throw new Error('Task does not support cancellation, or is already canceled.');
+        return // throw new Error('Task does not support cancellation, or is already canceled.');
       } else {
         value = task.cancelFn(task)
       }
@@ -792,7 +792,7 @@ const Zone: ZoneType = (function(global: any) {
       const prev = counts[type];
       const next = counts[type] = prev + count;
       if (next < 0) {
-        throw new Error('More tasks executed then were scheduled.');
+        return // throw new Error('More tasks executed then were scheduled.');
       }
       if (prev == 0 || next == 0) {
         const isEmpty: HasTaskState = {
