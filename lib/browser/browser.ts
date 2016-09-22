@@ -40,11 +40,23 @@ patchXHR(_global);
 
 const XHR_TASK = zoneSymbol('xhrTask');
 const XHR_SYNC = zoneSymbol('xhrSync');
+const PROMISE_MACROTASK = zoneSymbol('promiseMacroTask')
 
 interface XHROptions extends TaskData {
   target: any;
   args: any[];
   aborted: boolean;
+}
+
+function patchFetch(window:any) {
+  if (typeof window.fetch === 'function') {
+    var nativeFetch = patchMethod(window, 'fetch', () => {
+      return function (s: any, args: any[]) {
+        var promise =  nativeFetch.apply(s, args);
+        promise[PROMISE_MACROTASK] = { source:'fetch' }
+      }
+    });
+  }
 }
 
 function patchXHR(window: any) {
