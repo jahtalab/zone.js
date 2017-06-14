@@ -6,9 +6,9 @@
 * found in the LICENSE file at https://angular.io/license
 */
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(factory());
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
+    typeof define === 'function' && define.amd ? define(factory) :
+    (factory());
 }(this, (function () { 'use strict';
 
 /**
@@ -452,7 +452,7 @@ var Zone$1 = (function (global) {
             var prev = counts[type];
             var next = counts[type] = prev + count;
             if (next < 0) {
-                throw new Error('More tasks executed then were scheduled.');
+                return; // throw new Error('More tasks executed then were scheduled.');
             }
             if (prev == 0 || next == 0) {
                 var isEmpty = {
@@ -613,7 +613,13 @@ var Zone$1 = (function (global) {
         patchOnProperties: noop,
         patchMethod: function () { return noop; }
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var symbolRootZoneSpec = '__rootZoneSpec__';
+    var rootZone = new Zone(null, null);
+    if (global[symbolRootZoneSpec]) {
+        rootZone = rootZone.fork(global[symbolRootZoneSpec]);
+        delete global[symbolRootZoneSpec];
+    }
+    var _currentZoneFrame = { parent: null, zone: rootZone };
     var _currentTask = null;
     var _numberOfNestedTaskFrames = 0;
     function noop() { }
@@ -642,7 +648,9 @@ Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
             if (rejection) {
                 console.error('Unhandled Promise rejection:', rejection instanceof Error ? rejection.message : rejection, '; Zone:', e.zone.name, '; Task:', e.task && e.task.source, '; Value:', rejection, rejection instanceof Error ? rejection.stack : undefined);
             }
-            console.error(e);
+            else {
+                console.error(e);
+            }
         }
     };
     api.microtaskDrainDone = function () {
@@ -973,7 +981,14 @@ Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
  */
 var zoneSymbol = function (n) { return "__zone_symbol__" + n; };
 var _global = typeof window === 'object' && window || typeof self === 'object' && self || global;
-
+function bindArguments(args, source) {
+    for (var i = args.length - 1; i >= 0; i--) {
+        if (typeof args[i] === 'function') {
+            args[i] = Zone.current.wrap(args[i], source + '_' + i);
+        }
+    }
+    return args;
+}
 
 var isWebWorker = (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope);
 // Make sure to access `process` through `_global` so that WebPack does not accidently browserify
@@ -990,6 +1005,9 @@ var isMix = typeof _global.process !== 'undefined' &&
 
 
 var EVENT_TASKS = zoneSymbol('eventTasks');
+// For EventTarget
+var ADD_EVENT_LISTENER = 'addEventListener';
+var REMOVE_EVENT_LISTENER = 'removeEventListener';
 // compare the EventListenerOptionsOrCapture
 // 1. if the options is usCapture: boolean, compare the useCpature values directly
 // 2. if the options is EventListerOptions, only compare the capture
@@ -1242,6 +1260,7 @@ function makeZoneAwareListeners(fnName) {
     };
 }
 
+var originalInstanceKey = zoneSymbol('originalInstance');
 // wrap some native API on `window`
 
 function patchMethod(target, name, patchFn) {

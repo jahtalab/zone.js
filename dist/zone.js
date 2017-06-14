@@ -6,9 +6,9 @@
 * found in the LICENSE file at https://angular.io/license
 */
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
-	typeof define === 'function' && define.amd ? define(factory) :
-	(factory());
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory() :
+    typeof define === 'function' && define.amd ? define(factory) :
+    (factory());
 }(this, (function () { 'use strict';
 
 /**
@@ -452,7 +452,7 @@ var Zone$1 = (function (global) {
             var prev = counts[type];
             var next = counts[type] = prev + count;
             if (next < 0) {
-                throw new Error('More tasks executed then were scheduled.');
+                return; // throw new Error('More tasks executed then were scheduled.');
             }
             if (prev == 0 || next == 0) {
                 var isEmpty = {
@@ -613,7 +613,13 @@ var Zone$1 = (function (global) {
         patchOnProperties: noop,
         patchMethod: function () { return noop; }
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var symbolRootZoneSpec = '__rootZoneSpec__';
+    var rootZone = new Zone(null, null);
+    if (global[symbolRootZoneSpec]) {
+        rootZone = rootZone.fork(global[symbolRootZoneSpec]);
+        delete global[symbolRootZoneSpec];
+    }
+    var _currentZoneFrame = { parent: null, zone: rootZone };
     var _currentTask = null;
     var _numberOfNestedTaskFrames = 0;
     function noop() { }
@@ -642,7 +648,9 @@ Zone.__load_patch('ZoneAwarePromise', function (global, Zone, api) {
             if (rejection) {
                 console.error('Unhandled Promise rejection:', rejection instanceof Error ? rejection.message : rejection, '; Zone:', e.zone.name, '; Task:', e.task && e.task.source, '; Value:', rejection, rejection instanceof Error ? rejection.stack : undefined);
             }
-            console.error(e);
+            else {
+                console.error(e);
+            }
         }
     };
     api.microtaskDrainDone = function () {
@@ -1150,6 +1158,24 @@ function findExistingRegisteredTask(target, handler, name, options, remove) {
                 return eventTask;
             }
         }
+    }
+    return null;
+}
+function findAllExistingRegisteredTasks(target, name, remove) {
+    var eventTasks = target[EVENT_TASKS];
+    if (eventTasks) {
+        var result = [];
+        for (var i = eventTasks.length - 1; i >= 0; i--) {
+            var eventTask = eventTasks[i];
+            var data = eventTask.data;
+            if (data.eventName === name) {
+                result.push(eventTask);
+                if (remove) {
+                    eventTasks.splice(i, 1);
+                }
+            }
+        }
+        return result;
     }
     return null;
 }
