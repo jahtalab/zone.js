@@ -453,7 +453,7 @@ var Zone$1 = (function (global) {
             var prev = counts[type];
             var next = counts[type] = prev + count;
             if (next < 0) {
-                throw new Error('More tasks executed then were scheduled.');
+                return; // throw new Error('More tasks executed then were scheduled.');
             }
             if (prev == 0 || next == 0) {
                 var isEmpty = {
@@ -634,7 +634,13 @@ var Zone$1 = (function (global) {
             nativeMicroTaskQueuePromise = NativePromise.resolve(0);
         },
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var symbolRootZoneSpec = '__rootZoneSpec__';
+    var rootZone = new Zone(null, null);
+    if (global[symbolRootZoneSpec]) {
+        rootZone = rootZone.fork(global[symbolRootZoneSpec]);
+        delete global[symbolRootZoneSpec];
+    }
+    var _currentZoneFrame = { parent: null, zone: rootZone };
     var _currentTask = null;
     var _numberOfNestedTaskFrames = 0;
     function noop() { }
@@ -1264,26 +1270,6 @@ Zone.__load_patch('toString', function (global, Zone, api) {
  * @fileoverview
  * @suppress {missingRequire}
  */
-var __read$1 = (undefined && undefined.__read) || function (o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
-        try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
-        }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-};
-var __spread = (undefined && undefined.__spread) || function () {
-    for (var ar = [], i = 0; i < arguments.length; i++) ar = ar.concat(__read$1(arguments[i]));
-    return ar;
-};
 var TRUE_STR = 'true';
 var FALSE_STR = 'false';
 // an identifier to tell ZoneTask do not create a new invoke closure
@@ -1520,7 +1506,6 @@ function patchEventTarget(_global, apis, patchOptions) {
             if (prepend === void 0) { prepend = false; }
             return function () {
                 var target = this || _global;
-                var targetZone = Zone.current;
                 var delegate = arguments[1];
                 if (!delegate) {
                     return nativeListener.apply(this, arguments);
@@ -1675,7 +1660,6 @@ function patchEventTarget(_global, apis, patchOptions) {
             if (existingTasks) {
                 for (var i = 0; i < existingTasks.length; i++) {
                     var existingTask = existingTasks[i];
-                    var typeOfDelegate = typeof delegate;
                     if (compare(existingTask, delegate)) {
                         existingTasks.splice(i, 1);
                         // set isRemoved to data for faster invokeTask check
@@ -1732,7 +1716,7 @@ function patchEventTarget(_global, apis, patchOptions) {
                     var tasks = target[symbolEventName];
                     var captureTasks = target[symbolCaptureEventName];
                     if (tasks) {
-                        var removeTasks = __spread(tasks);
+                        var removeTasks = tasks.slice();
                         for (var i = 0; i < removeTasks.length; i++) {
                             var task = removeTasks[i];
                             var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
@@ -1740,7 +1724,7 @@ function patchEventTarget(_global, apis, patchOptions) {
                         }
                     }
                     if (captureTasks) {
-                        var removeTasks = __spread(captureTasks);
+                        var removeTasks = captureTasks.slice();
                         for (var i = 0; i < removeTasks.length; i++) {
                             var task = removeTasks[i];
                             var delegate = task.originalDelegate ? task.originalDelegate : task.callback;
@@ -1792,13 +1776,6 @@ function findEventTasks(target, eventName) {
  * found in the LICENSE file at https://angular.io/license
  */
 Zone.__load_patch('EventEmitter', function (global, Zone, api) {
-    var callAndReturnFirstParam = function (fn) {
-        return function (self, args) {
-            fn(self, args);
-            return self;
-        };
-    };
-    // For EventEmitter
     var EE_ADD_LISTENER = 'addListener';
     var EE_PREPEND_LISTENER = 'prependListener';
     var EE_REMOVE_LISTENER = 'removeListener';
