@@ -1335,6 +1335,11 @@ const Zone: ZoneType = (function(global: any) {
       }
     },
   };
+
+  var rootSpec = null
+  if(global['__rootZoneSpec__']) {
+    rootSpec = global['__rootZoneSpec__']
+  }
   let _currentZoneFrame: _ZoneFrame = {parent: null, zone: new Zone(null, null)};
   let _currentTask: Task = null;
   let _numberOfNestedTaskFrames = 0;
