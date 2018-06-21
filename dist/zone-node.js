@@ -632,7 +632,13 @@ var Zone$1 = (function (global) {
             }
         },
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var rootSpec = null;
+    var rootZone = new Zone(null, null);
+    if (global['__rootZoneSpec__']) {
+        rootSpec = global['__rootZoneSpec__'];
+        rootZone = rootZone.fork(rootSpec);
+    }
+    var _currentZoneFrame = { parent: null, zone: rootZone };
     var _currentTask = null;
     var _numberOfNestedTaskFrames = 0;
     function noop() { }

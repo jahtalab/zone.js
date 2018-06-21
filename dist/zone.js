@@ -632,7 +632,13 @@ var Zone$1 = (function (global) {
             }
         },
     };
-    var _currentZoneFrame = { parent: null, zone: new Zone(null, null) };
+    var rootSpec = null;
+    var rootZone = new Zone(null, null);
+    if (global['__rootZoneSpec__']) {
+        rootSpec = global['__rootZoneSpec__'];
+        rootZone = rootZone.fork(rootSpec);
+    }
+    var _currentZoneFrame = { parent: null, zone: rootZone };
     var _currentTask = null;
     var _numberOfNestedTaskFrames = 0;
     function noop() { }
@@ -2922,6 +2928,8 @@ Zone.__load_patch('XHR', function (global, Zone) {
     var XHR_LISTENER = zoneSymbol('xhrListener');
     var XHR_SCHEDULED = zoneSymbol('xhrScheduled');
     var XHR_URL = zoneSymbol('xhrURL');
+    var XHR_METHOD = zoneSymbol('xhrMethod');
+    var XHR_HEADERS = zoneSymbol('xhrHeaders');
     function patchXHR(window) {
         var XMLHttpRequestPrototype = XMLHttpRequest.prototype;
         function findPendingTask(target) {
@@ -2981,7 +2989,20 @@ Zone.__load_patch('XHR', function (global, Zone) {
         var openNative = patchMethod(XMLHttpRequestPrototype, 'open', function () { return function (self, args) {
             self[XHR_SYNC] = args[2] == false;
             self[XHR_URL] = args[1];
+            self[XHR_METHOD] = args[0];
             return openNative.apply(self, args);
+        }; });
+        var setRequestHeaderNative = patchMethod(XMLHttpRequestPrototype, 'setRequestHeader', function () { return function (self, args) {
+            if (!self[XHR_HEADERS]) {
+                self[XHR_HEADERS] = {};
+            }
+            var headers = self[XHR_HEADERS];
+            var key = args[0];
+            if (!headers[key]) {
+                headers[key] = [];
+            }
+            headers[key].push(args[1]);
+            return setRequestHeaderNative.apply(self, args);
         }; });
         var XMLHTTPREQUEST_SOURCE = 'XMLHttpRequest.send';
         var sendNative = patchMethod(XMLHttpRequestPrototype, 'send', function () { return function (self, args) {
