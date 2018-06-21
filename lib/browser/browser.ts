@@ -96,6 +96,8 @@ Zone.__load_patch('XHR', (global: any, Zone: ZoneType) => {
   const XHR_LISTENER = zoneSymbol('xhrListener');
   const XHR_SCHEDULED = zoneSymbol('xhrScheduled');
   const XHR_URL = zoneSymbol('xhrURL');
+  const XHR_METHOD = zoneSymbol('xhrMethod');
+  const XHR_HEADERS = zoneSymbol('xhrHeaders');
 
   interface XHROptions extends TaskData {
     target: any;
@@ -173,8 +175,24 @@ Zone.__load_patch('XHR', (global: any, Zone: ZoneType) => {
         patchMethod(XMLHttpRequestPrototype, 'open', () => function(self: any, args: any[]) {
           self[XHR_SYNC] = args[2] == false;
           self[XHR_URL] = args[1];
+          self[XHR_METHOD] = args[0];
           return openNative.apply(self, args);
         });
+      
+    const setRequestHeaderNative: Function =
+        patchMethod(XMLHttpRequestPrototype, 'setRequestHeader', () => function(self: any, args: any[]) {
+          if(!self[XHR_HEADERS]){
+            self[XHR_HEADERS] = {} 
+          }
+          var headers = self[XHR_HEADERS]
+          var key = args[0]
+          if(!headers[key]){
+            headers[key] = []
+          }
+          headers[key].push(args[1])
+          
+          return setRequestHeaderNative.apply(self, args);
+    });
 
     const XMLHTTPREQUEST_SOURCE = 'XMLHttpRequest.send';
     const sendNative: Function =

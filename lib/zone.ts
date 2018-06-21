@@ -1337,10 +1337,12 @@ const Zone: ZoneType = (function(global: any) {
   };
 
   var rootSpec = null
+  var rootZone:any = new Zone(null, null)
   if(global['__rootZoneSpec__']) {
     rootSpec = global['__rootZoneSpec__']
+    rootZone = rootZone.fork(rootSpec)
   }
-  let _currentZoneFrame: _ZoneFrame = {parent: null, zone: new Zone(null, null)};
+  let _currentZoneFrame: _ZoneFrame = {parent: null, zone: rootZone};
   let _currentTask: Task = null;
   let _numberOfNestedTaskFrames = 0;
 
